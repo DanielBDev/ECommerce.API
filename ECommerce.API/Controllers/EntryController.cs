@@ -11,7 +11,7 @@ namespace ECommerce.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize()]
+    [Authorize(Roles = "Admin, Deposito")]
     public class EntryController : ControllerBase
     {
         private readonly IEntryService _entryService;

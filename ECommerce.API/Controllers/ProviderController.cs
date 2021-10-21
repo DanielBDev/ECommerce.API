@@ -8,7 +8,7 @@ namespace ECommerce.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize()]
+    [Authorize(Roles = "Admin, Deposito")]
     public class ProviderController : Controller
     {
         private readonly IProviderService _providerService;

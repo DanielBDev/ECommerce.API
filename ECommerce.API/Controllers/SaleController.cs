@@ -11,7 +11,7 @@ namespace ECommerce.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize()]
+    [Authorize(Roles = "Admin, Vendedor")]
     public class SaleController : ControllerBase
     {
         private readonly ISaleService _saleService;

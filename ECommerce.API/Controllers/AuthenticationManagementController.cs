@@ -20,7 +20,8 @@ using Enum;
 namespace ECommerce.API.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]    
+    [ApiController]
+    [Authorize(Roles = "Admin")]
     public class AuthenticationManagementController : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager;
@@ -44,7 +45,6 @@ namespace ECommerce.API.Controllers
             _logger = logger;
         }
 
-        [Authorize(Roles = "Admin")]
         [HttpPost("RegisterUser")]
         public async Task<object> RegisterUser([FromBody] UserRegistrationRequest model)
         {
@@ -88,6 +88,7 @@ namespace ECommerce.API.Controllers
             }            
         }
 
+        [AllowAnonymous]
         [HttpPost("Login")]
         public async Task<object> Login([FromBody] UserLoginRequest model)
         {
@@ -115,7 +116,24 @@ namespace ECommerce.API.Controllers
             }
         }
 
-        [Authorize(Roles = "Admin")]
+        [HttpDelete("DeleteUser")]
+        public async Task<object> DeleteUser(string userName)
+        {
+            var userDel = await _userManager.FindByNameAsync(userName);
+
+            if (userName == null)
+            {
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, "El usuario no pudo ser encontrado.", null));
+            }
+            else
+            {
+                var rol = await _userManager.GetRolesAsync(userDel);
+                await _userManager.RemoveFromRolesAsync(userDel, rol);
+                await _userManager.DeleteAsync(userDel);
+                return await Task.FromResult(new ResponseModel(ResponseCode.OK, "Usuario Eliminado con éxito.", null));
+            }
+        }
+
         [HttpGet("GetAllUser")]
         public async Task<object> GetAllUser()
         {
@@ -139,7 +157,6 @@ namespace ECommerce.API.Controllers
             }
         }
 
-        [Authorize(Roles = "Admin")]
         [HttpGet("GetRoles")]
         public async Task<object> GetRoles()
         {
@@ -155,7 +172,6 @@ namespace ECommerce.API.Controllers
             }
         }
 
-        [Authorize()]
         [HttpPost("AddRole")]
         public async Task<object> AddRole([FromBody] UserRoleDto model)
         {

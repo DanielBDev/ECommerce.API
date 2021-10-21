@@ -10,7 +10,7 @@ namespace ECommerce.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize()]
+    [Authorize(Roles = "Admin, Deposito")]
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
@@ -23,6 +23,7 @@ namespace ECommerce.API.Controllers
             _applicationDbContext = aplicationDbContext;
         }
 
+        [AllowAnonymous]
         [HttpGet]
         public ActionResult GetAll()
         {
@@ -65,6 +66,7 @@ namespace ECommerce.API.Controllers
             return new JsonResult("Algo salio mal") { StatusCode = 500 };
         }
 
+        [AllowAnonymous]
         [HttpGet("{Id}")]
         public ActionResult<int> GetStock(int id)
         {
