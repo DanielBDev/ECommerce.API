@@ -15,6 +15,5 @@ namespace ECommerce.API.Models.DTOs.Request
         public decimal Cost { get; set; }
         public int Stock { get; set; }
         public bool State { get; set; }
-        public string UserId { get; set; }
     }
 }

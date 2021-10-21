@@ -1,25 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using ECommerce.API.Configuration;
 using ECommerce.API.Data;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Identity;
-using Swashbuckle.AspNetCore.SwaggerGen;
-using Microsoft.AspNetCore.Authorization;
 using ECommerce.API.Services.Implementation;
 
 using ECommerce.API.Services.Interface;
@@ -28,6 +19,8 @@ namespace ECommerce.API
 {
     public class Startup
     {
+        private readonly string _loginOrigin = "_localorigin";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -38,75 +31,55 @@ namespace ECommerce.API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            //JWT Configuration
             services.Configure<JwtConfig>(Configuration.GetSection("JwtConfig"));
-
             //SQL Database Conection  
             services.AddDbContext<AplicationDbContext>(options =>
                         options.UseSqlServer(Configuration.GetConnectionString("DevConnection")));
 
-            //JWT Configuration
-            var key = Encoding.ASCII.GetBytes(Configuration["JwtConfig:Secret"]);
-
-            var tokenValidationParams = new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = true,
-                RequireExpirationTime = false,
-                //ClockSkew = TimeSpan.Zero
-            };
-
-            services.AddSingleton(tokenValidationParams);
-
-            services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-                .AddJwtBearer(jwt =>
-                {
-                    jwt.SaveToken = true;
-                    jwt.TokenValidationParameters = tokenValidationParams;
-                });
-
-            services.AddDefaultIdentity<IdentityUser>(options =>
-            options.SignIn.RequireConfirmedAccount = true)
+            services.AddIdentity<IdentityUser, IdentityRole>(options => { })
                 .AddEntityFrameworkStores<AplicationDbContext>();
 
-            services.AddControllers();
-            services.AddSwaggerGen(c =>
+            services.AddAuthentication(x =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "ECommerce.API", Version = "v1" });
-                c.AddSecurityDefinition("BearerAuth", new OpenApiSecurityScheme
+                x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(options =>
+            {
+                var key = Encoding.ASCII.GetBytes(Configuration["JwtConfig:Secret"]);
+                var issuer = Configuration["JwtConfig:Issuer"];
+                var audience = Configuration["JwtConfig:Audience"];
+                options.TokenValidationParameters = new TokenValidationParameters()
                 {
-                    Type = SecuritySchemeType.Http,
-                    Scheme = JwtBearerDefaults.AuthenticationScheme.ToLowerInvariant(),
-                    In = ParameterLocation.Header,
-                    Name = "Authorization",
-                    BearerFormat = "JWT",
-                    Description = "JWT Authorization header using the Bearer scheme."
-                });
-
-                c.OperationFilter<AuthResponsesOperationFilter>();
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    RequireExpirationTime = true,
+                    ValidIssuer = issuer,
+                    ValidAudience = audience
+                };
             });
 
             //Cors
             services.AddCors(options =>
             {
-                options.AddPolicy("AllowWebApp", builder => builder.AllowAnyOrigin()
+                options.AddPolicy(_loginOrigin, builder => builder.AllowAnyOrigin()
                                                                    .AllowAnyHeader()
                                                                    .AllowAnyMethod());
             });
+
+            services.AddControllers();
+
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "ECommerce.API", Version = "v1" });
+            });            
 
             //Project Services
             services.AddScoped<IProductService, ProductService>();
             services.AddScoped<IEntryService, EntryService>();
             services.AddScoped<ISaleService, SaleService>();
-            services.AddScoped<ICashRegisterService, CashRegisterService>();
+            services.AddScoped<IProviderService, ProviderService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -121,60 +94,18 @@ namespace ECommerce.API
 
             app.UseHttpsRedirection();
 
-            app.UseRouting();
-            app.UseAuthentication();
-            app.UseAuthorization();
+            app.UseCors(_loginOrigin);
 
-            app.UseCors("AllowWebApp");
+            app.UseRouting();
+
+            app.UseAuthentication();
+
+            app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
-        }
-
-        internal class AuthResponsesOperationFilter : IOperationFilter
-        {
-            public void Apply(OpenApiOperation operation, OperationFilterContext context)
-            {
-                var attributes = context.MethodInfo.DeclaringType.GetCustomAttributes(true)
-                                    .Union(context.MethodInfo.GetCustomAttributes(true));
-
-                if (attributes.OfType<IAllowAnonymous>().Any())
-                {
-                    return;
-                }
-
-                var authAttributes = attributes.OfType<IAuthorizeData>();
-
-                if (authAttributes.Any())
-                {
-                    operation.Responses["401"] = new OpenApiResponse { Description = "Unauthorized" };
-
-                    if (authAttributes.Any(att => !String.IsNullOrWhiteSpace(att.Roles) || !String.IsNullOrWhiteSpace(att.Policy)))
-                    {
-                        operation.Responses["403"] = new OpenApiResponse { Description = "Forbidden" };
-                    }
-
-                    operation.Security = new List<OpenApiSecurityRequirement>
-                    {
-                        new OpenApiSecurityRequirement
-                        {
-                            {
-                                new OpenApiSecurityScheme
-                                {
-                                    Reference = new OpenApiReference
-                                    {
-                                        Id = "BearerAuth",
-                                        Type = ReferenceType.SecurityScheme
-                                    }
-                                },
-                                Array.Empty<string>()
-                            }
-                        }
-                    };
-                }
-            }
         }
     }
 }

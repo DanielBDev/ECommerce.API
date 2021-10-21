@@ -16,9 +16,7 @@ namespace ECommerce.API.Data.Entities
         public decimal? Cost { get; set; }
         public int? Stock { get; set; }
         public List<DetailEntry> DetailEntries { get; set; }
-        public List<DetailLost> DetailLosts { get; set; }
         public List<DetailSale> DetailSales { get; set; }
-        ////////////////////////
         public string UserId { get; set; }
         [ForeignKey(nameof(UserId))]
         public IdentityUser User { get; set; }

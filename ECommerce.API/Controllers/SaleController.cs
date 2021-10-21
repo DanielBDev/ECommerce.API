@@ -1,20 +1,17 @@
 ﻿using ECommerce.API.Data;
 using ECommerce.API.Models.DTOs.Request;
 using ECommerce.API.Services.Interface;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace ECommerce.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [Authorize()]
     public class SaleController : ControllerBase
     {
         private readonly ISaleService _saleService;
@@ -31,7 +28,8 @@ namespace ECommerce.API.Controllers
         {
             if (ModelState.IsValid)
             {
-                _saleService.Add(sale);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                _saleService.Add(sale, userId);
                 return Ok();
             }
             return new JsonResult("Algo salio mal") { StatusCode = 500 };
@@ -42,7 +40,8 @@ namespace ECommerce.API.Controllers
         {
             if (ModelState.IsValid)
             {
-                _saleService.Modify(sale);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                _saleService.Modify(sale, userId);
                 return Ok();
             }
             return new JsonResult("Algo salio mal") { StatusCode = 500 };

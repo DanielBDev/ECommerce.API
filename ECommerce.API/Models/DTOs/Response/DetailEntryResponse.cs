@@ -1,9 +1,6 @@
 ﻿using ECommerce.API.Data.Entities;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ECommerce.API.Models.DTOs.Response
 {

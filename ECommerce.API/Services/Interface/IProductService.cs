@@ -8,16 +8,10 @@ namespace ECommerce.API.Services.Interface
 {
     public interface IProductService
     {
-        Product Add(ProductRequest product);
-        Product Modify(ProductRequest product);
+        Product Add(ProductRequest product, string userId);
+        Product Modify(ProductRequest product, string userId);
         Product Delete(int id);
-
         IEnumerable<ProductResponse> GetAll();
-
-        IEnumerable<ProductRequest> GetByTitle(string title);
-
-        IEnumerable<ProductRequest> GetByCode(string code);
-
-        ProductRequest GetById(int id);
+        Product GetById(int id);
     }
 }

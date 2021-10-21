@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ECommerce.API.Data.Migrations
 {
     [DbContext(typeof(AplicationDbContext))]
-    [Migration("20211003205519_userIdentity")]
-    partial class userIdentity
+    [Migration("20211021041813_Final")]
+    partial class Final
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -20,65 +20,6 @@ namespace ECommerce.API.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("ProductVersion", "5.0.10")
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-            modelBuilder.Entity("ECommerce.API.Data.Entities.CashRegister", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<decimal>("AmountSystem")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("ClosingAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("ClosingDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ClosingUserName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("Diference")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("OpeningAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("OpeningDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("OpeningUserName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("State")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("CashRegisters");
-                });
-
-            modelBuilder.Entity("ECommerce.API.Data.Entities.DetailCashRegister", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("CashRegisterId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CashRegisterId");
-
-                    b.ToTable("DetailCashRegisters");
-                });
 
             modelBuilder.Entity("ECommerce.API.Data.Entities.DetailEntry", b =>
                 {
@@ -111,40 +52,15 @@ namespace ECommerce.API.Data.Migrations
                     b.ToTable("DetailEntries");
                 });
 
-            modelBuilder.Entity("ECommerce.API.Data.Entities.DetailLost", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<int>("LostId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("UnitCost")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LostId");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("DetailLosts");
-                });
-
             modelBuilder.Entity("ECommerce.API.Data.Entities.DetailSale", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
@@ -156,9 +72,6 @@ namespace ECommerce.API.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Total")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -183,28 +96,8 @@ namespace ECommerce.API.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("State")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Entries");
-                });
-
-            modelBuilder.Entity("ECommerce.API.Data.Entities.Lost", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("datetime2");
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("int");
 
                     b.Property<bool>("State")
                         .HasColumnType("bit");
@@ -217,9 +110,11 @@ namespace ECommerce.API.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ProviderId");
+
                     b.HasIndex("UserId");
 
-                    b.ToTable("Losts");
+                    b.ToTable("Entries");
                 });
 
             modelBuilder.Entity("ECommerce.API.Data.Entities.Product", b =>
@@ -260,39 +155,29 @@ namespace ECommerce.API.Data.Migrations
                     b.ToTable("Products");
                 });
 
-            modelBuilder.Entity("ECommerce.API.Data.Entities.RefreshToken", b =>
+            modelBuilder.Entity("ECommerce.API.Data.Entities.Provider", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<DateTime>("AddedDate")
-                        .HasColumnType("datetime2");
+                    b.Property<int>("Cuil")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("ExpiryDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRevorked")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsUsed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("JwtId")
+                    b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Token")
+                    b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<bool>("State")
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("Providers");
                 });
 
             modelBuilder.Entity("ECommerce.API.Data.Entities.Sale", b =>
@@ -302,21 +187,19 @@ namespace ECommerce.API.Data.Migrations
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<int>("CashRegisterId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("State")
                         .HasColumnType("bit");
 
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CashRegisterId");
 
                     b.HasIndex("UserId");
 
@@ -466,12 +349,10 @@ namespace ECommerce.API.Data.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ProviderKey")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("nvarchar(max)");
@@ -508,12 +389,10 @@ namespace ECommerce.API.Data.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("LoginProvider")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Name")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Value")
                         .HasColumnType("nvarchar(max)");
@@ -521,17 +400,6 @@ namespace ECommerce.API.Data.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens");
-                });
-
-            modelBuilder.Entity("ECommerce.API.Data.Entities.DetailCashRegister", b =>
-                {
-                    b.HasOne("ECommerce.API.Data.Entities.CashRegister", "CashRegister")
-                        .WithMany("DetailCashRegisters")
-                        .HasForeignKey("CashRegisterId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CashRegister");
                 });
 
             modelBuilder.Entity("ECommerce.API.Data.Entities.DetailEntry", b =>
@@ -549,25 +417,6 @@ namespace ECommerce.API.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Entry");
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("ECommerce.API.Data.Entities.DetailLost", b =>
-                {
-                    b.HasOne("ECommerce.API.Data.Entities.Lost", "Lost")
-                        .WithMany("DetailLosts")
-                        .HasForeignKey("LostId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ECommerce.API.Data.Entities.Product", "Product")
-                        .WithMany("DetailLosts")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Lost");
 
                     b.Navigation("Product");
                 });
@@ -593,18 +442,17 @@ namespace ECommerce.API.Data.Migrations
 
             modelBuilder.Entity("ECommerce.API.Data.Entities.Entry", b =>
                 {
+                    b.HasOne("ECommerce.API.Data.Entities.Provider", "Provider")
+                        .WithMany("Entries")
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
 
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ECommerce.API.Data.Entities.Lost", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId");
+                    b.Navigation("Provider");
 
                     b.Navigation("User");
                 });
@@ -618,28 +466,11 @@ namespace ECommerce.API.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ECommerce.API.Data.Entities.RefreshToken", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("ECommerce.API.Data.Entities.Sale", b =>
                 {
-                    b.HasOne("ECommerce.API.Data.Entities.CashRegister", "CashRegister")
-                        .WithMany("Sales")
-                        .HasForeignKey("CashRegisterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
-
-                    b.Navigation("CashRegister");
 
                     b.Navigation("User");
                 });
@@ -695,30 +526,21 @@ namespace ECommerce.API.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ECommerce.API.Data.Entities.CashRegister", b =>
-                {
-                    b.Navigation("DetailCashRegisters");
-
-                    b.Navigation("Sales");
-                });
-
             modelBuilder.Entity("ECommerce.API.Data.Entities.Entry", b =>
                 {
                     b.Navigation("DetailEntries");
-                });
-
-            modelBuilder.Entity("ECommerce.API.Data.Entities.Lost", b =>
-                {
-                    b.Navigation("DetailLosts");
                 });
 
             modelBuilder.Entity("ECommerce.API.Data.Entities.Product", b =>
                 {
                     b.Navigation("DetailEntries");
 
-                    b.Navigation("DetailLosts");
-
                     b.Navigation("DetailSales");
+                });
+
+            modelBuilder.Entity("ECommerce.API.Data.Entities.Provider", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("ECommerce.API.Data.Entities.Sale", b =>

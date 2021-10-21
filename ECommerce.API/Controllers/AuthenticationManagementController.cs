@@ -7,357 +7,209 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ECommerce.API.Configuration;
-using ECommerce.API.Data;
-using ECommerce.API.Data.Entities;
-using ECommerce.API.Domain;
 using ECommerce.API.Models.DTOs.Request;
-using ECommerce.API.Models.DTOs.Response;
+using ECommerce.API.Models.DTOs;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
+using ECommerce.API.Models;
+using Enum;
 
 namespace ECommerce.API.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]
+    [ApiController]    
     public class AuthenticationManagementController : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly JwtConfig _jwtConfig;
-        private readonly TokenValidationParameters _tokenValidationParams;
-        //private readonly TokenValidationParameters _refreshTokenValidationParams;
-        private readonly AplicationDbContext _aplicationDbContext;
-
+        private readonly ILogger<AuthenticationManagementController> _logger;
 
         public AuthenticationManagementController(
             UserManager<IdentityUser> userManager,
-            IOptionsMonitor<JwtConfig> optionsMonitor,
-            TokenValidationParameters tokenValidationParams,
-            AplicationDbContext aplicationDbContext)
+            SignInManager<IdentityUser> signInManager,
+            RoleManager<IdentityRole> roleManager,
+            IOptions<JwtConfig> jwtConfig,
+            ILogger<AuthenticationManagementController> logger
+            )
         {
             _userManager = userManager;
-            _jwtConfig = optionsMonitor.CurrentValue;
-            _tokenValidationParams = tokenValidationParams;
-            _aplicationDbContext = aplicationDbContext;
+            _roleManager = roleManager;
+            _signInManager = signInManager;
+            _jwtConfig = jwtConfig.Value;
+            _logger = logger;
         }
 
-        [HttpPost]
-        [Route("Register")]
-        public async Task<IActionResult> Register([FromBody] UserRegistrationRequest user)
+        [Authorize(Roles = "Admin")]
+        [HttpPost("RegisterUser")]
+        public async Task<object> RegisterUser([FromBody] UserRegistrationRequest model)
         {
-            if (ModelState.IsValid)
+            try
             {
-                var existingUser = await _userManager.FindByEmailAsync(user.Email);
-
-                if (existingUser != null)
+                if (ModelState.IsValid)
                 {
-                    return BadRequest(new RegistrationResponse()
+                    var existingUser = await _userManager.FindByEmailAsync(model.Email);
+
+                    if (existingUser != null)
                     {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "El email ya existe."
-                        }
-                    });
+                        return await Task.FromResult(new ResponseModel(ResponseCode.Error, "El Email ya esta en uso.", null));
+                    }
+                    if (!await _roleManager.RoleExistsAsync(model.Role))
+                    {
+                        return await Task.FromResult(new ResponseModel(ResponseCode.Error, "El rol no existe", null));
+                    }
+                    var user = new IdentityUser()
+                    {
+                        UserName = model.Email,
+                        Email = model.Email
+                    };
+                    var result = await _userManager.CreateAsync(user, model.Password);
+
+                    if (result.Succeeded)
+                    {
+                        var tempUser = await _userManager.FindByEmailAsync(model.Email);
+                        await _userManager.AddToRoleAsync(tempUser, model.Role);
+
+                        return await Task.FromResult(new ResponseModel(ResponseCode.OK ,"Usuario registrado con éxito.", null));
+                    }
+
+                    return await Task.FromResult(new ResponseModel(ResponseCode.Error,"",result.Errors.Select(x => x.Description).ToArray()));
                 }
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, "Carga invalida.", null));
 
-                var newUser = new IdentityUser() { Email = user.Email, UserName = user.UserName };
-                var isCreated = await _userManager.CreateAsync(newUser, user.Password);
-                if (isCreated.Succeeded)
-                {
-                    var jwtToken = await GenerateJwtToken(newUser);
-
-                    return Ok(jwtToken);
-                }
-
-                return BadRequest(new RegistrationResponse()
-                {
-                    Result = false,
-                    Errors = isCreated.Errors.Select(u => u.Description).ToList()
-                });
-/*                { StatusCode = 500 }*/;
             }
-
-            return BadRequest(new RegistrationResponse()
+            catch (Exception ex)
             {
-                Result = false,
-                Errors = new List<string>()
-                {
-                    "Carga invalida."
-                }
-            });
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, ex.Message, null));
+            }            
         }
 
-        [HttpPost]
-        [Route("Login")]
-        public async Task<IActionResult> Login([FromBody] UserLoginRequest user)
+        [HttpPost("Login")]
+        public async Task<object> Login([FromBody] UserLoginRequest model)
         {
-            if (ModelState.IsValid)
+            try
             {
-                var existingUser = await _userManager.FindByEmailAsync(user.Email);
-
-                if (existingUser == null)
+                if (ModelState.IsValid)
                 {
-                    return BadRequest(new RegistrationResponse()
+                    var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, false, false);
+                    if (result.Succeeded)
                     {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "Solicitud de autenticacion no valida."
-                        }
-                    });
-                }
+                        var appUser = await _userManager.FindByEmailAsync(model.Email);
+                        var role = (await _userManager.GetRolesAsync(appUser)).FirstOrDefault();
+                        var user = new UserDTO(appUser.UserName, appUser.Email, role);
+                        user.Token = GenerateToken(appUser, role);
 
-                var isCorrect = await _userManager.CheckPasswordAsync(existingUser, user.Password);
-
-                if (isCorrect)
-                {
-                    var jwtToken = await GenerateJwtToken(existingUser);
-
-                    return Ok(jwtToken);
+                        return await Task.FromResult(new ResponseModel(ResponseCode.OK, "", user));
+                    }
+                    return await Task.FromResult(new ResponseModel(ResponseCode.Error, "Email o Contraseña incorrectos.", null));
                 }
-                else
-                {
-                    return BadRequest(new RegistrationResponse()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "Solicitud de autenticacion no valida."
-                        }
-                    });
-                }
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, "Carga invalida.", null));
             }
-
-            return BadRequest(new RegistrationResponse()
+            catch (Exception ex)
             {
-                Result = false,
-                Errors = new List<string>()
-                {
-                    "Carga invalida."
-                }
-            });
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, ex.Message, null));
+            }
         }
 
-        [HttpPost]
-        [Route("RefreshToken")]
-        public async Task<IActionResult> RefreshToken([FromBody] TokenRequest tokenRequest)
+        [Authorize(Roles = "Admin")]
+        [HttpGet("GetAllUser")]
+        public async Task<object> GetAllUser()
         {
-            if (ModelState.IsValid)
+            try
             {
-                var result = await VerifyAndGenerateToken(tokenRequest);
+                List<UserDTO> allUserDTO = new List<UserDTO>();
+                var users = _userManager.Users.ToList();
 
-                if (result == null)
+                foreach (var user in users)
                 {
-                    return BadRequest(new RegistrationResponse()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "Tokens invalidos."
-                        }
-                    });
+                    var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
+
+                    allUserDTO.Add( new UserDTO(user.UserName, user.Email, role));
                 }
 
-                return Ok(result);
+                return await Task.FromResult(new ResponseModel(ResponseCode.OK, "", allUserDTO));
             }
-
-            return BadRequest(new RegistrationResponse()
+            catch (Exception ex)
             {
-                Result = false,
-                Errors = new List<string>()
-                {
-                    "Carga invalida."
-                }
-            });
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, ex.Message, null));
+            }
         }
 
-        private async Task<AuthenticationResult> GenerateJwtToken(IdentityUser user)
+        [Authorize(Roles = "Admin")]
+        [HttpGet("GetRoles")]
+        public async Task<object> GetRoles()
+        {
+            try
+            {
+                var roles = _roleManager.Roles.Select(x => x.Name).ToList();
+
+                return await Task.FromResult(new ResponseModel(ResponseCode.OK, "", roles));
+            }
+            catch (Exception ex)
+            {
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, ex.Message, null));
+            }
+        }
+
+        [Authorize()]
+        [HttpPost("AddRole")]
+        public async Task<object> AddRole([FromBody] UserRoleDto model)
+        {
+            try
+            {
+                if (model==null || model.Role == "")
+                {
+                    return await Task.FromResult(new ResponseModel(ResponseCode.Error, "Faltan parametros.", null));
+                }
+                if (await _roleManager.RoleExistsAsync(model.Role))
+                {
+                    return await Task.FromResult(new ResponseModel(ResponseCode.OK, "El rol ya existe.", null));
+                }
+
+                var role = new IdentityRole();
+                role.Name = model.Role;
+                var result = await _roleManager.CreateAsync(role);
+                if (result.Succeeded)
+                {
+                    return await Task.FromResult(new ResponseModel(ResponseCode.OK, "Rol añadido con éxito.", null));
+                }
+
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, "Algo salió mal, por favor intente nuevamente.", null));
+            }
+            catch (Exception ex)
+            {
+                return await Task.FromResult(new ResponseModel(ResponseCode.Error, ex.Message, null));
+            }
+        }
+
+        #region Private Methods
+        private string GenerateToken(IdentityUser user, string role)
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
-
             var key = Encoding.ASCII.GetBytes(_jwtConfig.Secret);
-
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim("Id", user.Id),
+                    new Claim(JwtRegisteredClaimNames.NameId, user.Id),
                     new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    new Claim(ClaimTypes.Role, role)
                 }),
-                Expires = DateTime.UtcNow.AddSeconds(30),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                Expires = DateTime.UtcNow.AddHours(12),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+                Audience = _jwtConfig.Audience,
+                Issuer = _jwtConfig.Issuer
             };
 
             var token = jwtTokenHandler.CreateToken(tokenDescriptor);
-
-            var jwtToken = jwtTokenHandler.WriteToken(token);
-
-            var refreshToken = new RefreshToken()
-            {
-                JwtId = token.Id,
-                IsUsed = false,
-                UserId = user.Id,
-                AddedDate = DateTime.UtcNow,
-                ExpiryDate = DateTime.UtcNow.AddMonths(6),
-                IsRevorked = false,
-                Token = RandomString(35) + Guid.NewGuid()
-            };
-
-            await _aplicationDbContext.RefreshTokens.AddAsync(refreshToken);
-            await _aplicationDbContext.SaveChangesAsync();
-            //
-            var userId = refreshToken.UserId;
-
-            return new AuthenticationResult()
-            {
-                Token = jwtToken,
-                Result = true,
-                RefreshToken = refreshToken.Token,
-                UserId = userId
-            };
+            return jwtTokenHandler.WriteToken(token);
         }
+        #endregion
 
-        private async Task<AuthenticationResult> VerifyAndGenerateToken(TokenRequest tokenRequest)
-        {
-            var jwtTokenHandler = new JwtSecurityTokenHandler();
-
-            try
-            {
-                var tokenInVerification = jwtTokenHandler.ValidateToken(tokenRequest.Token, _tokenValidationParams, out var validatedToken);
-
-                if (validatedToken is JwtSecurityToken jwtSecurityToken)
-                {
-                    var result = jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase);
-
-                    if (result == false)
-                    {
-                        return null;
-                    }
-                }
-
-                var utcExpiryDate = long.Parse(tokenInVerification.Claims
-                    .FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp).Value);
-
-                var expiryDate = UnixTimeStampToDateTime(utcExpiryDate);
-
-                if (expiryDate > DateTime.UtcNow)
-                {
-                    return new AuthenticationResult()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "El Token aun no ha expirado."
-                        }
-                    };
-                }
-
-                var storedToken = await _aplicationDbContext.RefreshTokens
-                    .FirstOrDefaultAsync(x => x.Token == tokenRequest.RefreshToken);
-
-                if (storedToken == null)
-                {
-                    return new AuthenticationResult()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "El Token no existe."
-                        }
-                    };
-                }
-
-                if (storedToken.IsUsed)
-                {
-                    return new AuthenticationResult()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "El Token ya esta en uso."
-                        }
-                    };
-                }
-
-                if (storedToken.IsRevorked)
-                {
-                    return new AuthenticationResult()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "El Token ha sido revocado."
-                        }
-                    };
-                }
-
-                var jti = tokenInVerification.Claims
-                    .FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti).Value;
-
-                if (storedToken.JwtId != jti)
-                {
-                    return new AuthenticationResult()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "El Token no coincide."
-                        }
-                    };
-                }
-
-                storedToken.IsUsed = true;
-                _aplicationDbContext.RefreshTokens.Update(storedToken);
-                await _aplicationDbContext.SaveChangesAsync();
-
-                var dbUser = await _userManager.FindByIdAsync(storedToken.UserId);
-                return await GenerateJwtToken(dbUser);
-            }
-            catch (Exception ex)
-            {
-                if (ex.Message.Contains("Lifetime validation failed. The token is expired."))
-                {
-                    return new AuthenticationResult()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "Su sesion ha expirado, por favor vuelva a ingresar."
-                        }
-                    };
-                }
-                else
-                {
-                    return new AuthenticationResult()
-                    {
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "Algo salio mal."
-                        }
-                    };
-                }
-            }
-        }
-
-        private DateTime UnixTimeStampToDateTime(long unixTimeStamp)
-        {
-            var dateTimeVal = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-            dateTimeVal = dateTimeVal.AddSeconds(unixTimeStamp).ToUniversalTime();
-            return dateTimeVal;
-        }
-
-        private string RandomString(int lenght)
-        {
-            var random = new Random();
-            var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-            return new string(Enumerable.Repeat(chars, lenght)
-                .Select(x => x[random.Next(x.Length)]).ToArray());
-        }
     }
 }

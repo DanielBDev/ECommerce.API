@@ -18,15 +18,16 @@ namespace ECommerce.API.Services.Implementation
             _aplicationDbContext = aplicationDbContext;
         }
 
-        public Entry Add(EntryRequest entry)
+        public Entry Add(EntryRequest entry, string userId)
         {
             var entity = new Entry
             {
                 Description = entry.Description,
                 Date = DateTime.Now,
                 State = true,
-                UserId = entry.UserId,
-                Total = entry.Total
+                UserId = userId,
+                Total = entry.Total,
+                ProviderId = entry.ProviderId
             };
 
             _aplicationDbContext.Add(entity);
@@ -53,7 +54,7 @@ namespace ECommerce.API.Services.Implementation
             return entity;
         }
 
-        public Entry Modify(EntryRequest entry)
+        public Entry Modify(EntryRequest entry, string userId)
         {
             var entity = _aplicationDbContext.Entries.FirstOrDefault(x => x.Id == entry.Id);
             var rollback = 0;
@@ -62,6 +63,8 @@ namespace ECommerce.API.Services.Implementation
             entity.Date = DateTime.Now;
             entity.Total = entry.Total;
             entity.State = true;
+            entity.ProviderId = entry.ProviderId;
+            entity.UserId = userId;
 
             foreach (var Detail in entry.DetailEntries)
             {
@@ -88,7 +91,26 @@ namespace ECommerce.API.Services.Implementation
         {
             var entity = _aplicationDbContext.Entries.FirstOrDefault(x => x.Id == id);
 
+            var detailsEntry = _aplicationDbContext.DetailEntries.Where(de => de.EntryId == entity.Id);
+            var rollback = 0;
             entity.State = false;
+
+            foreach (var Detail in detailsEntry)
+            {
+                var detailEntry = _aplicationDbContext.DetailEntries.FirstOrDefault(de => de.Id == Detail.Id);
+                var product = _aplicationDbContext.Products.FirstOrDefault(x => x.Id == detailEntry.ProductId);
+                rollback = (int)(product.Stock - detailEntry.Quantity);
+                detailEntry.Quantity = Detail.Quantity;
+                detailEntry.Cost = Detail.Cost;
+
+                detailEntry.ProductId = Detail.ProductId;
+                detailEntry.EntryId = entity.Id;
+                detailEntry.Total = Detail.Quantity * Detail.Cost;
+                // Stock & Cost Control
+                product.Stock = rollback;
+                product.Cost = detailEntry.Cost;
+                //
+            }
 
             _aplicationDbContext.SaveChanges();
 
@@ -101,34 +123,11 @@ namespace ECommerce.API.Services.Implementation
             {
                 Id = e.Id,
                 DescriptionEntry = e.Description,
-                Date = e.Date.ToString("dd/MM/yyyy H:mm"),
+                Date = e.Date.ToString("yyyy/MM/dd H:mm"),
                 UserName = e.User.Email,
-                Total = e.Total
-            }).ToList().OrderByDescending(d => d.Date);
+                Total = e.Total,
+                ProviderName = e.Provider.Name
+            }).ToList().OrderByDescending(d => d.Id);
         }
-
-        //public object GetEntryId(int idEntry)
-        //{
-        //    var entry = _aplicationDbContext.Entries.Where(e => e.Id == idEntry).Select(e => new DetailEntryResponse
-        //    {
-        //        Id = e.Id,
-        //        DescriptionEntry = e.Description,
-        //        Date = e.Date.ToString("dd/MM/yyyy H:mm"),
-        //        Total = e.Total,
-        //        UserName = e.User.Email,
-        //    });
-
-        //    var detailEntry = _aplicationDbContext.DetailEntries.Where(de => de.EntryId == idEntry).Select(de => new DetailEntry
-        //    {
-        //        Id = de.Id,
-        //        Cost = de.Cost,
-        //        Quantity = de.Quantity,
-        //        Total = de.Total,
-        //        ProductId = de.ProductId
-        //    }).ToList();
-
-
-        //    return (entry, detailEntry);
-        //}
     }
 }

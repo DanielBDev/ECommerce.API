@@ -12,7 +12,6 @@ namespace ECommerce.API.Models.DTOs.Request
         public bool State { get; set; }
         public DateTime Date { get; set; }
         public ICollection<DetailSaleDto> DetailSales { get; set; }
-        public string UserId { get; set; }
     }
     public class DetailSaleDto
     {

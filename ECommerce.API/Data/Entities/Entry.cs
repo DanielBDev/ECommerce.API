@@ -12,9 +12,10 @@ namespace ECommerce.API.Data.Entities
         [Column(TypeName = "decimal(18,2)")]
         public decimal Total { get; set; }
         public ICollection<DetailEntry> DetailEntries { get; set; }
-        ////////////////////////
         public string UserId { get; set; }
         [ForeignKey(nameof(UserId))]
         public IdentityUser User { get; set; }
+        public int ProviderId { get; set; }
+        public Provider Provider { get; set; }
     }
 }

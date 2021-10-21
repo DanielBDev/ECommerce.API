@@ -7,24 +7,9 @@ namespace ECommerce.API.Services.Interface
 {
     public interface IEntryService
     {
-        Entry Add(EntryRequest entry);
-        Entry Modify(EntryRequest entry);
+        Entry Add(EntryRequest entry, string userId);
+        Entry Modify(EntryRequest entry, string userId);
         Entry Delete(int id);
         IEnumerable<EntryResponse> GetAll();
-
-
-        //IEnumerable<DetailEntryResponse> GetEntryById(int idEntry);
-
-        //object GetEntryId(int id);
-
-        //IEnumerable<> GetEntryId(int idEntry);
-
-        //IEnumerable<EntryResponse> GetByDate(DateTime date);
-
-        //IEnumerable<EntryResponse> GetByDate(DateTime date);
-
-        //IEnumerable<EntryViewModel> GetByCode(string code);
-
-        //EntryViewModel GetById(int id);
     }
 }

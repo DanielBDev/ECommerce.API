@@ -18,7 +18,7 @@ namespace ECommerce.API.Services.Implementation
             _aplicationDbContext = aplicationDbContext;
         }
 
-        public Product Add(ProductRequest product)
+        public Product Add(ProductRequest product, string userId)
         {
             var entity = new Product
             {
@@ -29,7 +29,7 @@ namespace ECommerce.API.Services.Implementation
                 Cost = 0,
                 Stock = 0,
                 State = true,
-                UserId = product.UserId
+                UserId = userId
             };
 
             _aplicationDbContext.Add(entity);
@@ -38,7 +38,7 @@ namespace ECommerce.API.Services.Implementation
             return entity;
         }
 
-        public Product Modify(ProductRequest product)
+        public Product Modify(ProductRequest product, string userId)
         {
             var entity = _aplicationDbContext.Products.FirstOrDefault(x => x.Id == product.Id);
 
@@ -49,7 +49,7 @@ namespace ECommerce.API.Services.Implementation
             entity.Stock = product.Stock;
             entity.Date = DateTime.Now;
             entity.State = true;
-            entity.UserId = product.UserId;
+            entity.UserId = userId;
 
             _aplicationDbContext.SaveChanges();
 
@@ -80,40 +80,14 @@ namespace ECommerce.API.Services.Implementation
                 Date = p.Date.ToString("dd/MM/yyyy H:mm"),
                 UserName = p.User.Email,
                 State = p.State
-            }).ToList().OrderByDescending(d => d.Date);
+            }).ToList().OrderByDescending(d => d.Id);
         }
 
-        public IEnumerable<ProductRequest> GetByCode(string code)
+        public Product GetById(int id)
         {
-            return _aplicationDbContext.Products.Where(p => p.Code.Contains(code)).Select(p => new ProductRequest
-            {
-                Id = p.Id,
-                Title = p.Title,
-                Code = p.Code,
-                Price = p.Price,
-                Cost = (decimal)p.Cost,
-                Stock = (int)p.Stock,
-                Date = p.Date
-            }).OrderBy(p => p.Code);
-        }
+            var entity = _aplicationDbContext.Products.FirstOrDefault(p => p.Id == id);
 
-        public ProductRequest GetById(int id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IEnumerable<ProductRequest> GetByTitle(string title)
-        {
-            return _aplicationDbContext.Products.Where(p => p.Title.Contains(title)).Select(p => new ProductRequest
-            {
-                Id = p.Id,
-                Title = p.Title,
-                Code = p.Code,
-                Price = p.Price,
-                Cost = (decimal)p.Cost,
-                Stock = (int)p.Stock,
-                Date = p.Date
-            }).ToList().OrderBy(p => p.Title);
-        }     
+            return entity;
+        }   
     }
 }

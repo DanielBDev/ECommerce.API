@@ -8,8 +8,8 @@ namespace ECommerce.API.Services.Interface
 {
     public interface ISaleService
     {
-        Sale Add(SaleRequest sale);
-        Sale Modify(SaleRequest sale);
+        Sale Add(SaleRequest sale, string userId);
+        Sale Modify(SaleRequest sale, string userId);
         Sale Delete(int id);
         IEnumerable<SaleResponse> GetAll();     
     }

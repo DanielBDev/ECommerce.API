@@ -1,17 +1,17 @@
 ﻿using ECommerce.API.Data;
 using ECommerce.API.Models.DTOs.Request;
 using ECommerce.API.Services.Interface;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 
 namespace ECommerce.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [Authorize()]
     public class EntryController : ControllerBase
     {
         private readonly IEntryService _entryService;
@@ -28,7 +28,8 @@ namespace ECommerce.API.Controllers
         {
             if (ModelState.IsValid)
             {
-                _entryService.Add(entry);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                _entryService.Add(entry, userId);
                 return Ok();
             }
             return new JsonResult("Algo salio mal") { StatusCode = 500 };
@@ -39,7 +40,8 @@ namespace ECommerce.API.Controllers
         {
             if (ModelState.IsValid)
             {
-                _entryService.Modify(entry);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                _entryService.Modify(entry, userId);
                 return Ok();
             }
             return new JsonResult("Algo salio mal") { StatusCode = 500 };
@@ -76,7 +78,7 @@ namespace ECommerce.API.Controllers
                              e.Date,
                              e.UserId,
                              e.Total,
-                             DeletedEntryDetailIds=""
+                             e.ProviderId
                          }).FirstOrDefault();
 
             var detailEntry = (from de in _aplicationDbContext.DetailEntries
